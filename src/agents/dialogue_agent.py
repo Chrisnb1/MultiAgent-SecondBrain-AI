@@ -1,96 +1,90 @@
-from typing import List, Dict
-from langchain_core.messages import HumanMessage
-from langchain_core.prompts import ChatPromptTemplate
-from langchain.chains import ConversationChain
-from langchain.memory import ConversationBufferMemory
+from typing import List
+from langchain import hub
 from src.utils.open_router import ChatOpenRouter
+from langchain_core.runnables import RunnableWithMessageHistory
+from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain_core.chat_history import BaseChatMessageHistory
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
 class DialogueAgent:
-    def __init__(self, default_model: str = 'meta-llama/llama-2-13b-chat'):
-        self.default_model = default_model
-        self.current_model = default_model
-        self.llm = self.create_llm(default_model)
-        self.memory = ConversationBufferMemory()
-        self.conversation = self.create_conversation()
+    def __init__(self, model_name: str = 'openchat/openchat-7b:free') -> None:
+        self.model_name = model_name
+        self.llm = ChatOpenRouter(model_name=model_name)
+        self.prompt = self.create_prompt()
+        self.tools = []
+        self.runnable_agent = self.create_runnable_agent()
+        self.store = {}
 
-    def create_llm(self, model_name: str):
-        return ChatOpenRouter(model_name=model_name)
-        
-    def create_conversation(self):
-        return ConversationChain(
-            llm=self.llm,
-            memory=self.memory,
-            verbose=True
+
+    def create_prompt(self):
+        return hub.pull("dialogue_agent")
+    
+    def get_session_history(self, session_id: str) -> BaseChatMessageHistory:
+        if session_id not in self.store:
+            self.store[session_id] = ChatMessageHistory()
+        return self.store[session_id]
+
+    
+    def create_runnable_agent(self) -> RunnableWithMessageHistory:
+        chain = self.prompt | self.llm
+        return RunnableWithMessageHistory(
+            chain,
+            self.get_session_history,
+            input_messages_key="input",
+            history_messages_key="chat_history"
         )
     
-    def change_model(self, new_model: str):
-        self.current_model = new_model
-        self.llm = self.create_llm(new_model)
-        self.conversation = self.create_conversation()
+    def change_model(self, new_model: str) -> str:
+        self.model_name = new_model
+        self.llm = ChatOpenRouter(new_model)
+        self.runnable_agent = self.create_runnable_agent()
         return f"Modelo cambiado a {new_model}"
     
-    def process_user_input(self, user_input: str) -> str:
+    def process_user_input(self, user_input: str, session_id: str) -> str:
         if user_input.lower().startswith("cambiar modelo a "):
             new_model = user_input.lower().replace("cambiar modelo a ", "").strip()
             return self.change_model(new_model)
-        
-        response = self.conversation.predict(input=user_input)
-        return response
-    
-    def get_conversation_history(self) -> List[Dict[str, str]]:
-        return [
-            {"role": "human" if isinstance(message, HumanMessage) else "ai", "content": message.content}
-            for message in self.memory.chat_memory.messages
-        ]
-    
-    def clear_conversation_history(self):
-        self.memory.clear()
-
-    def detect_intent(self, user_input: str) -> str:
-        intent_prompt = ChatPromptTemplate.from_template(
-            "Detecta la intención principal del siguiente mensaje del usuario. "
-            "Responde con una sola palabra: 'chat', 'search', 'help', o 'change_model'.\n\n"
-            "Mensaje del usuario: {input}"
+  
+        response = self.runnable_agent.invoke(
+            {"input": user_input},
+            config={"configurable": {"session_id": session_id}}
         )
-        intent_chain = intent_prompt | self.llm
-        intent = intent_chain.invoke({"input": user_input}).content.strip().lower()
-        return intent if intent in ['chat', 'search', 'help', 'change_model'] else 'chat'
-
+        return response.content
+    
+    def get_model(self) -> str:
+        return self.model_name
+    
     def get_available_models(self) -> List[str]:
         return [
-            'meta-llama/llama-2-13b-chat',
-            'openchat/openchat-7b:free'
+            'openchat/openchat-7b:free',
+            'meta-llama/llama-2-13b-chat'            
         ]
-
-    def get_current_model(self) -> str:
-        return self.current_model
+    
+    def get_conversation_history(self, session_id: str) -> str:
+        return self.runnable_agent.get_session_history(session_id)
+    
+    def clear_conversation_history(self, session_id: str):
+        self.runnable_agent.get_message_history(session_id).clear()
     
     def start_conversation(self):
-        print("Asistente: ¡Hola! Soy tu asistente personal MS-AI.\n"
-              f"Estoy usando el modelo {self.get_current_model()}\n"
+        print("Asistente: ¡Hola! Soy tu asistente personal.\n"
+              f"Estoy usando el modelo {self.get_model()}\n"
               "Puedes cambiar el modelo en cualquier momento diciendo 'cambiar modelo a [nombre del modelo]'.\n"
               "Modelos disponibles:", ", ".join(self.get_available_models()),"\n"
               "¿En qué puedo ayudarte hoy?")
-
+        
+        session_id = "1"
         while True:
             user_input = input("Tú: ")
             if user_input.lower() == "exit":
-                print("Asistente: ¡Hasta luego! Que tengas un buen día.")
+                print("Asistente: ¡Hasta Luego! Que tengas un buen día.")
                 break
 
-            intent = self.detect_intent(user_input)
-            
-            if intent == "change_model":
-                response = self.process_user_input(user_input)
-                print(f"Asistente: {response}\n"
-                      f"Modelo actual: {self.get_current_model()}")
-            else:
-                dialogue_response = self.process_user_input(user_input)
-                print(f"Asistente: {dialogue_response}")
-
+            dialogue_response = self.process_user_input(user_input, session_id)
+            print(f"Asistente: {dialogue_response}")
+        
         print("\nHistorial de la conversación:")
-        for message in self.get_conversation_history():
-            print(f"{message['role'].capitalize()}: {message['content']}")
+        print(self.get_conversation_history(session_id))
