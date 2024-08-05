@@ -1,0 +1,44 @@
+{
+  "documents": [
+    {
+      "id": "doc1",
+      "title": "Introducción a la Inteligencia Artificial",
+      "content": "La Inteligencia Artificial (IA) es un campo de la informática que se centra en la creación de máquinas inteligentes que pueden realizar tareas que típicamente requieren inteligencia humana. Esto incluye el aprendizaje, la resolución de problemas y el reconocimiento de patrones.",
+      "metadata": {
+        "author": "Dr. Ana García",
+        "date": "2023-05-15",
+        "category": "Tecnología"
+      }
+    },
+    {
+      "id": "doc2",
+      "title": "Beneficios del Ejercicio Regular",
+      "content": "El ejercicio regular ofrece numerosos beneficios para la salud, incluyendo la mejora de la salud cardiovascular, el fortalecimiento de los músculos y huesos, y la reducción del estrés. Se recomienda al menos 150 minutos de actividad física moderada por semana para adultos.",
+      "metadata": {
+        "author": "Dra. María Sánchez",
+        "date": "2023-06-22",
+        "category": "Salud y Bienestar"
+      }
+    },
+    {
+      "id": "doc3",
+      "title": "Cocina Mediterránea",
+      "content": "La cocina mediterránea se caracteriza por el uso abundante de aceite de oliva, vegetales frescos, pescado y granos integrales. Esta dieta es conocida por sus beneficios para la salud, incluyendo la reducción del riesgo de enfermedades cardíacas y la mejora de la longevidad.",
+      "metadata": {
+        "author": "Chef Carlos Ruiz",
+        "date": "2023-07-10",
+        "category": "Gastronomía"
+      }
+    },
+    {
+      "id": "doc4",
+      "title": "Energías Renovables",
+      "content": "Las energías renovables, como la solar y la eólica, son fuentes de energía limpia que se renuevan naturalmente. Su adopción es crucial para combatir el cambio climático y reducir la dependencia de los combustibles fósiles.",
+      "metadata": {
+        "author": "Ing. Laura Martínez",
+        "date": "2023-08-05",
+        "category": "Medio Ambiente"
+      }
+    }
+  ]
+}
