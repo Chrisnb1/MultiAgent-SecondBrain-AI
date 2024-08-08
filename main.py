@@ -13,7 +13,7 @@ def main():
 
     # rag_agent.add_document("/path/to/new/document.txt")
 
-    rag_agent.setup_agent('src/data/json-example.json')
+    rag_agent.setup_agent('src/data/pdf-example.pdf')
 
 
 

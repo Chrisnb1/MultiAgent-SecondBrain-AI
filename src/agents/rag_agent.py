@@ -38,6 +38,7 @@ class RAGAgent:
     def create_retriever(self, file_path):
         loader = self.get_loader(file_path)
         documents = loader.load()
+        print(f"\n{documents}\n")
         splitter = self.get_splitter(file_path)
         splits = splitter.split_documents(documents)
 
@@ -59,10 +60,13 @@ class RAGAgent:
     def setup_agent(self, file_path: str):
 
         if file_path is not None:
+            print(f"Leyendo ruta {file_path}")
+            print("Cargando datos en la vector store...")
             retriever = self.create_retriever(file_path)
+            print("Generando herramientas...")
             tools = self.get_retriever_tool(retriever)
             memory = SqliteSaver.from_conn_string(":memory:")
-
+            print("Creando Agente RAG...")
             self.agent_executor = create_react_agent(self.llm, tools, checkpointer=memory)
             while True:
                 question = input("Tú: ")
@@ -78,11 +82,11 @@ class RAGAgent:
     def query(self, question: str) -> str:
         config = {"configurable": {"thread_id": "abc123"}}
         if not self.agent_executor:
-            raise ValueError("Agent not set up. Call setup_agent() first.")
+            raise ValueError("Error: Agente no configurado.")
         for s in self.agent_executor.stream(
             {"messages": [HumanMessage(content=question)]}, config=config
         ):
-            print(s["messages"][-1])
+            print(s)
             print("----")
 
     def get_loader(self, file_path: str):
@@ -91,7 +95,14 @@ class RAGAgent:
         elif file_path.endswith('.json'):
             return JSONLoader(file_path, jq_schema='.documents[].content')
         elif file_path.endswith('.csv'):
-            return CSVLoader(file_path)
+            return CSVLoader(
+                file_path=file_path,
+                csv_args={
+                    "delimiter": ";",
+                    "quotechar": '"',
+                    "fieldnames": ["ID Cliente","Zona","País","Tipo de producto","Canal de venta","Prioridad","Fecha pedido","ID Pedido","Fecha envío Unidades","Precio Unitario","Coste unitario","Importe venta total","Importe Coste total"]
+                    }
+                )
         elif file_path.endswith('.pdf'):
             return PyPDFLoader(file_path)
         elif file_path.endswith('.md'):
@@ -103,7 +114,7 @@ class RAGAgent:
 
 
     def get_splitter(self, file_extension: str):
-        if file_extension in ['.txt', '.pdf', '.docx', '.doc']:
+        if file_extension in ['.txt', '.pdf', '.csv']:
             return RecursiveCharacterTextSplitter(
                 chunk_size=self.config['chunk_size'],
                 chunk_overlap=self.config['chunk_overlap']
@@ -130,14 +141,5 @@ class RAGAgent:
             max_retries=2,
         )
         return llm
-
-
-
-
-
-        # documents = loader.load()
-        # text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-        # splits = text_splitter.split_documents(documents)
-        # self.vector_store.add_documents(splits)
 
 
